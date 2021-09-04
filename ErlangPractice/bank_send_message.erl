@@ -1,4 +1,4 @@
--module(bank).
+-module(bank_send_message).
 -export([start/1]).
 
 start(Balance) -> 
