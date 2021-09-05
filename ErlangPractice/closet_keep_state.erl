@@ -21,7 +21,9 @@ store(Pid, Cloth) ->
     Pid ! {self(), {store, Cloth}},
     receive
     {Pid, Msg} -> Msg
-end.
+    after 3000 ->
+timeout
+    end.
  
 take(Pid, Cloth) ->
     Pid ! {self(), {take, Cloth}},
