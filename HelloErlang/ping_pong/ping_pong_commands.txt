@@ -1,0 +1,9 @@
+Terminal 1:
+c(ping).
+erl -name foo@IP -setcookie secret
+ping:start_ponger()
+
+Terminal 2:
+c(pong).
+erl -name bar@IP -setcookie secret
+ping:start_pinger('foo@IP').

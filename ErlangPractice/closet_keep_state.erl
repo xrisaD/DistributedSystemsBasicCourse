@@ -20,15 +20,17 @@ end.
 store(Pid, Cloth) ->
     Pid ! {self(), {store, Cloth}},
     receive
-    {Pid, Msg} -> Msg
+        {Pid, Msg} -> Msg
     after 3000 ->
-timeout
+        timeout
     end.
  
 take(Pid, Cloth) ->
     Pid ! {self(), {take, Cloth}},
     receive
-    {Pid, Msg} -> Msg
-end.
+        {Pid, Msg} -> Msg
+    after 3000 ->
+        timeout
+    end.
 
 start(ClothList) -> spawn(?MODULE, my_closet, [ClothList]).
