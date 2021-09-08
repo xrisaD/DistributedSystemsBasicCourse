@@ -1,0 +1,6 @@
+Terminal 1:
+erl -name foo@IP -setcookie secret
+ruby:start(8080).
+
+Terminal 2:
+test:bench('IP', 8080).

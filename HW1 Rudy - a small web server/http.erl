@@ -1,5 +1,5 @@
 -module(http).
--export([parse_request/1]).
+-export([parse_request/1, ok/1, get/1]).
 
 parse_request(R0) ->
     {Request, R1} = request_line(R0),
