@@ -1,4 +1,4 @@
--module(ruby).
+-module(rudy).
 -export([start/1, stop/0]).
 
 start(Port) -> register(rudy, spawn(fun() -> init(Port) end)).
@@ -15,7 +15,6 @@ init(Port) ->
         {error, Error} -> error
 end.
 
-%% listen to the socket for an incoming connection.
 handler(Listen) ->
     case gen_tcp:accept(Listen) of
         {ok, Client} -> request(Client);
@@ -23,7 +22,6 @@ handler(Listen) ->
     end, 
     handler(Listen).
 
-%% read the request from the client connection and parse it.
 request(Client) ->
     Recv = gen_tcp:recv(Client, 0),
     case Recv of
@@ -37,4 +35,5 @@ request(Client) ->
     gen_tcp:close(Client).
 
 reply({{get, URI, _}, _, _}) ->
-    http:ok("OK OK OK OK").
+    %%timer:sleep(40), %% artificial delay
+    http:ok("test").
