@@ -1,39 +1,35 @@
 -module(test2).
--compile([export_all]).
--record(result, {res=[]}).
+-export([run_bench/5]).
 
-
-%% Test 2: Get the average time, simulating multiple machines at a time
-start_bench(Host, Port, N) ->
+%% Test 2: Get the average time
+%% N: number of machines
+%% M: the number of requests each machine will send
+run_bench(Id, Host, Port, N, M) ->
     %% start receiver which will get the tests' results
-    Pid = start_receiver(N),
-    send(Pid, Host, Port, N).
+    Pid = start_receiver(Id, N),
+    %% start machines
+    send(Pid, Host, Port, N, M).
 
-
-send(Pid, Host, Port, N) ->
+% Create N processes
+send(Pid, Host, Port, N, M) ->
     if
-        N == 0 -> ok;
-        true -> spawn(?MODULE, run_one_bench, [Pid, Host, Port]),
-                send(Pid, Host, Port, N-1)
+        N < 0 -> ok;
+        true -> spawn(fun() -> run_one_bench(Pid, Host, Port, M) end), % create the N-th process
+                send(Pid, Host, Port, N-1, M) % create the next ((N-1)th) process
     end.
 
-start_receiver(N) -> spawn(?MODULE, receiver, [N]).
+start_receiver(Id, N) -> spawn(fun() -> receiver(Id, N, 0, 0) end).
 
-receiver(N) ->
+%% K: counts the numeber of received results
+%% R: the result
+receiver(Id, N, K, R) ->
    receive
-        {From, Time} ->
-            #result { res=[Time|#result.res] }, % save time
-            L = lists:flatlength(#result.res),
-            io:format("~f~n",[L+0.1]),
+        Time ->
             if 
-                L == N -> ok
+                N > K -> receiver(Id, N, K+1, Time+R); % save the time and wait for the next one
+                true -> Id ! R/N % send the result back to called process
             end
-    end,
-    receiver(N).
+    end.
 
-% print(List)->
-%  [io:format("Printing ~p ~n",[X])|| X <- List].
-
-run_one_bench(Pid, Host, Port) ->
-    %%Time = test:bench(Host, Port),
-    Pid ! {self(), test:bench(Host, Port)+0.1}.
+run_one_bench(Pid, Host, Port, M) ->
+    Pid ! test:bench(Host, Port, M)/math:pow(10,6). 

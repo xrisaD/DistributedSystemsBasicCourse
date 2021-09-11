@@ -22,7 +22,6 @@ end.
 handle_request(Client) -> 
     spawn(fun() -> request(Client) end).
 
-%% listen to the socket for an incoming connection.
 handler(Listen) ->
     case gen_tcp:accept(Listen) of
         {ok, Client} ->  handle_request(Client);
@@ -30,8 +29,6 @@ handler(Listen) ->
     end, 
     handler(Listen).
 
-
-%% read the request from the client connection and parse it.
 request(Client) ->
     Recv = gen_tcp:recv(Client, 0),
     case Recv of
@@ -45,5 +42,4 @@ request(Client) ->
     gen_tcp:close(Client).
 
 reply({{get, URI, _}, _, _}) ->
-    timer:sleep(40), %% artificial delay
-    http:ok("test body").
+    http:ok("test").

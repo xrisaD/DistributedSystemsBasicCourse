@@ -35,5 +35,5 @@ request(Client) ->
     gen_tcp:close(Client).
 
 reply({{get, URI, _}, _, _}) ->
-    %%timer:sleep(40), %% artificial delay
+    timer:sleep(40), %% artificial delay
     http:ok("test").

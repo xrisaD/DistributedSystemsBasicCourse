@@ -39,14 +39,15 @@ request(Client) ->
 reply({{get, URI, _}, _, _}) ->
     {ok, CurrentDirectory} = file:get_cwd(), % Get current directory
     [FilePath, FileName] = parse_uri(URI),
-    File = file:path_open([lists:delete($/, FilePath), CurrentDirectory], FileName, read),
+    File = file:path_open([lists:delete($/, FilePath), CurrentDirectory], FileName, read), % file open
     case File of 
-        {ok, _, FullName} -> Line = file:read_file(FullName),
-                            case Line of
-                                {ok, Data} -> http:ok(Data);
-                                {error, Reason} -> io:format("rudy: error: ~w~n", [Reason]), http:ok("Error")
+        {ok, _, FullName} ->{ok, {_, Size, _,_,_,_,_,_,_,_,_,_,_,_}} = file:read_file_info(FullName),
+                            RFile = file:read_file(FullName),
+                            case RFile of
+                                {ok, Data} -> http:ok(Data, Size);
+                                {error, Reason} -> io:format("rudy: error: ~w~n", [Reason]), http:not_found()
                             end;
-        {error, Reason} -> io:format("rudy: error: ~w~n", [Reason]), http:ok("File not found")
+        {error, Reason} -> io:format("rudy: error: ~w~n", [Reason]), http:not_found()
     end.
 
 parse_uri(URI) ->
