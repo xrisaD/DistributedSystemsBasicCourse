@@ -15,7 +15,6 @@ init(Port) ->
         {error, Error} -> error
 end.
 
-%% listen to the socket for an incoming connection.
 handler(Listen) ->
     case gen_tcp:accept(Listen) of
         {ok, Client} -> request(Client);
@@ -23,7 +22,6 @@ handler(Listen) ->
     end, 
     handler(Listen).
 
-%% read the request from the client connection and parse it.
 request(Client) ->
     Recv = gen_tcp:recv(Client, 0),
     case Recv of
@@ -37,12 +35,12 @@ request(Client) ->
     gen_tcp:close(Client).
 
 reply({{get, URI, _}, _, _}) ->
-    {ok, CurrentDirectory} = file:get_cwd(), % Get current directory
+    {ok, CurrentDirectory} = file:get_cwd(), % get current directory
     [FilePath, FileName] = parse_uri(URI),
-    File = file:path_open([lists:delete($/, FilePath), CurrentDirectory], FileName, read), % file open
+    File = file:path_open([lists:delete($/, FilePath), CurrentDirectory], FileName, read), % open file
     case File of 
-        {ok, _, FullName} ->{ok, {_, Size, _,_,_,_,_,_,_,_,_,_,_,_}} = file:read_file_info(FullName),
-                            RFile = file:read_file(FullName),
+        {ok, _, FullName} ->{ok, {_, Size, _,_,_,_,_,_,_,_,_,_,_,_}} = file:read_file_info(FullName), % read file's info
+                            RFile = file:read_file(FullName), % read file
                             case RFile of
                                 {ok, Data} -> http:ok(Data, Size);
                                 {error, Reason} -> io:format("rudy: error: ~w~n", [Reason]), http:not_found()
@@ -51,6 +49,6 @@ reply({{get, URI, _}, _, _}) ->
     end.
 
 parse_uri(URI) ->
-    Parsed = uri_string:parse(URI),
-    Path = maps:get(path, Parsed),
-    string:split(Path, "/", trailing).
+    Parsed = uri_string:parse(URI), % parse string
+    Path = maps:get(path, Parsed), % parse path
+    string:split(Path, "/", trailing). % split path and file name
