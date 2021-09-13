@@ -12,15 +12,15 @@ init(Port) ->
             handler(Listen),
             gen_tcp:close(Listen),
             ok;
-        {error, Error} -> error
+        {error, Error} -> io:format("rudy: error: ~w~n", [Error])
 end.
 
 handler(Listen) ->
     case gen_tcp:accept(Listen) of
-        {ok, Client} -> request(Client);
-        {error, Error} -> error
-    end, 
-    handler(Listen).
+        {ok, Client} -> request(Client),  
+                         handler(Listen); % continue handle requests;
+        {error, Error} -> io:format("rudy: error: ~w~n", [Error])
+    end.
 
 request(Client) ->
     Recv = gen_tcp:recv(Client, 0),

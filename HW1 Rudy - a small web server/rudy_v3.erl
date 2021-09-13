@@ -10,17 +10,20 @@ init(Port) ->
     case gen_tcp:listen(Port, Opt) of
         {ok, Listen} ->
             handler(Listen),
-            gen_tcp:close(Listen),
+            receive
+                handler_done ->
+                wait_for_threads(Count-1)
+            end,
             ok;
         {error, Error} -> error
 end.
 
 handler(Listen) ->
     case gen_tcp:accept(Listen) of
-        {ok, Client} -> request(Client);
+        {ok, Client} -> request(Client),  
+                        handler(Listen); % continue handle requests
         {error, Error} -> error
-    end, 
-    handler(Listen).
+    end.
 
 request(Client) ->
     Recv = gen_tcp:recv(Client, 0),

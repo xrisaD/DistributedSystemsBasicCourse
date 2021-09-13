@@ -24,10 +24,10 @@ handle_request(Client) ->
 
 handler(Listen) ->
     case gen_tcp:accept(Listen) of
-        {ok, Client} ->  handle_request(Client);
+        {ok, Client} ->  handle_request(Client),  
+                         handler(Listen); % continue handle requests
         {error, Error} -> error
-    end, 
-    handler(Listen).
+    end.
 
 request(Client) ->
     Recv = gen_tcp:recv(Client, 0),
