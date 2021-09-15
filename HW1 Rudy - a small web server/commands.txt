@@ -1,8 +1,0 @@
-Terminal 1:
-erl -name foo@130.229.149.235 -setcookie secret
-ruby:start(8080).
-
-Terminal 2:
-test1:bench('130.229.149.235', 8080).
-
-

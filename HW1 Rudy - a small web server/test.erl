@@ -1,6 +1,9 @@
 -module(test).
 -export([bench/3]).
 
+% Host: the host
+% Port: the port
+% M: the number of requests
 bench(Host, Port, M) ->
     Start = erlang:system_time(micro_seconds),
     run(M, Host, Port),
