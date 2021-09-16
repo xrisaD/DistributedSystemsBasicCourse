@@ -1,0 +1,44 @@
+Terminal 1:
+erl -sname foo -setcookie secret 
+
+c(http).
+c(test).
+c(test1).
+c(test2).
+
+c(rudy).
+c(rudy_v1).
+c(rudy_v2).
+c(rudy_v3).
+
+--- version 0 ---
+Terminal 1:
+rudy:start(8080).
+rudy:stop().
+
+Browser:
+http://localhost:8080/foo
+
+--- version 1 ---
+Terminal 1:
+rudy_v1:start(8080).
+rudy_v1:stop().
+
+--- version 2 ---
+Terminal 1:
+rudy_v2:start(8080, 100).
+rudy_v2:stop().
+
+--- version 3 ---
+Terminal 1:
+rudy_v3:start(8080).
+rudy:stop().
+
+Browser:
+http://localhost:8080/data/index.html
+http://localhost:8080/data/foo1/foo2/index1.html
+
+--- tests (all versions) ---
+test:bench('localhost', 8080, 100).
+test1:run_bench('localhost', 8080, 10, 100)
+test2:run_bench('localhost', 8080, 20, 100)
