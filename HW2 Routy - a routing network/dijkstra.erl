@@ -32,5 +32,6 @@ update(Node, N, Gateway, Sorted) ->
     ExistingN = entry(Node, Sorted),
     % if the entry exists and the new path is shorter than the old path, replace the old one with the new one
     if 
-        (ExistingN /= 0) and (N < ExistingN) -> replace(Node, N, Gateway, Sorted)
+        (ExistingN /= 0) and (N < ExistingN) -> replace(Node, N, Gateway, Sorted);
+        true ->  Sorted
     end.
