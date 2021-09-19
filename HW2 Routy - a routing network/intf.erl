@@ -1,5 +1,5 @@
 -module(intf).
--export([]).
+-export([new/0, add/4, remove/2, lookup/2, ref/2, name/2, list/1, broadcast/2]).
 
 % A set of interfaces
 % A interface is described by the symbolic name, a process reference and a process identifier.
@@ -12,7 +12,7 @@ add(Name, Ref, Pid, Intf) ->
     % it is a set so we don't want to add the same interface a second time
     case lists:keyfind(Name, 1, Intf) of
         {_, _, _}->
-            Intf
+            Intf;
         false->
             Intf ++ [{Name, Ref, Pid}]
     end.
