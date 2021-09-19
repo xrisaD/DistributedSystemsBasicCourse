@@ -1,0 +1,1 @@
+dijkstra:route(rome ,dijkstra:table([paris, madrid], [{madrid,[berlin]}, {paris, [rome,madrid]}])).
