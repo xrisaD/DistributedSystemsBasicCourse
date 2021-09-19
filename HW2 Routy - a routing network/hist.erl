@@ -1,5 +1,5 @@
 -module(hist).
--export([]).
+-export([new/1, update/3]).
 
 % Return a new history, where messages from Name will always be seen as old.
 new(Name) -> [{Name, 0}].
@@ -7,4 +7,11 @@ new(Name) -> [{Name, 0}].
 % Check if message number N from the Node
 % is old or new. If it is old then return old but if it new return {new, Updated}
 % where Updated is the updated history
-update(Node, N, History) -> 0.
+update(Node, N, History) -> 
+    case lists:keyfind(Node, 1, History) of
+        {_, N2} ->
+            if N < N2 -> old;
+               true ->  {new, lists:keyreplace(Node, 1, History, {Node, N})}
+            end;
+        false -> {new, [{Node, N}] ++ [History]}
+    end.
