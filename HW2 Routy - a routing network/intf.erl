@@ -1,13 +1,21 @@
 -module(intf).
 -export([]).
 
+% A set of interfaces
 % A interface is described by the symbolic name, a process reference and a process identifier.
 
 % returns an empty set of interfaces.
 new() -> [].
 
 % add a new entry to the set and return the new set of interfaces.
-add(Name, Ref, Pid, Intf) -> Intf ++ [{Name, Ref, Pid}].
+add(Name, Ref, Pid, Intf) -> 
+    % it is a set so we don't want to add the same interface a second time
+    case lists:keyfind(Name, 1, Intf) of
+        {_, _, _}->
+            Intf
+        false->
+            Intf ++ [{Name, Ref, Pid}]
+    end.
 
 % remove an entry given a name of an interface, return a new set of interfaces
 remove(Name, Intf) -> lists:keydelete(Name, 1, Intf).
