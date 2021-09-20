@@ -48,4 +48,4 @@ name(Ref, Intf) -> case lists:keyfind(Ref, 2, Intf) of
 list(Intf) -> lists:foldl(fun({Name, Ref, Pid}, Result) -> Result ++ [Name] end, [], Intf).
 
 % send the message to all interface processes.
-broadcast(Message, Intf) -> lists:foreach(fun({_, _, Pid}) -> Pid ! Message end ,Intf).
+broadcast(Message, Intf) -> lists:foreach(fun({_, _, Pid}) -> Pid ! Message end, Intf).

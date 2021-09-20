@@ -1,1 +1,16 @@
-dijkstra:route(rome ,dijkstra:table([paris, madrid], [{madrid,[berlin]}, {paris, [rome,madrid]}])).
+erl -name sweden@130.229.149.178 -setcookie routy -connect_all false
+routy:start(r1, stockholm).
+routy:start(r2, lund).
+
+r1 ! {add, lund, {r2, 'sweden@130.229.149.178'}}.  
+r2 ! {add, stockholm, {r1, 'sweden@130.229.149.178'}}.
+
+r1 ! broadcast.
+r2 ! broadcast.
+r1 ! update.
+r2 ! update.
+
+r1 ! {send, lund, 'Hello Lund, I am Stockholm!'} 
+
+routy:stop(r1).
+routy:stop(r2).

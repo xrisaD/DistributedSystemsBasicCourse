@@ -13,5 +13,5 @@ update(Node, N, History) ->
             if N < N2 -> old;
                true ->  {new, lists:keyreplace(Node, 1, History, {Node, N})}
             end;
-        false -> {new, [{Node, N}] ++ [History]}
+        false -> {new, new(Node) ++ History}
     end.

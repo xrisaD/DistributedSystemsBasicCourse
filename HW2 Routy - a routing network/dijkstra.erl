@@ -1,5 +1,5 @@
 -module(dijkstra).
--export([table/2, route/2]).
+-export([iterate/3, table/2, route/2]).
 
 % SortedList:
 
@@ -44,7 +44,7 @@ iterate(Sorted, Map, Table) ->
                 % find the nodes in the map reachable from this entry
                 ReachableNodes = map:reachable(Node, Map),
                 % for each of these nodes update the Sorted list. 
-                NewSorted = lists:foldl(fun(Node2, SortedList) -> update(Node2, 1, Node, SortedList) end, T, ReachableNodes),
+                NewSorted = lists:foldl(fun(Node2, SortedList) -> update(Node2, Length + 1, Node, SortedList) end, T, ReachableNodes),
                 % The entry that you took from the sorted list is added to the routing table.
                 iterate(NewSorted, Map, Table ++ [{Node,Gateway}])
            end
@@ -62,4 +62,7 @@ table(Gateways, Map) ->
     iterate(AllSorted, Map, []).
 
 % search the routing table and return the gateway suitable to route messages to a node
-route(Node, Table) -> {_, Gateway} = lists:keyfind(Node, 1, Table), Gateway.
+route(Node, Table) -> case lists:keyfind(Node, 1, Table) of
+                            {_, Gateway} -> {ok, Gateway};
+                            false -> notfound
+                      end.
