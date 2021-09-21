@@ -10,7 +10,8 @@ r2 ! broadcast.
 r1 ! update.
 r2 ! update.
 
-r1 ! {send, lund, 'Hello Lund, I am Stockholm!'} 
+r1 ! {send, lund, 'Hello Lund, I am Stockholm!'}.
+r2 ! {send, stockholm, 'Hello Stockholm, I am Lund!'}.
 
 routy:stop(r1).
 routy:stop(r2).

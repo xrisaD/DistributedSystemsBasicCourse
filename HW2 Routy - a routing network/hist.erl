@@ -10,8 +10,8 @@ new(Name) -> [{Name, 0}].
 update(Node, N, History) -> 
     case lists:keyfind(Node, 1, History) of
         {_, N2} ->
-            if N < N2 -> old;
-               true ->  {new, lists:keyreplace(Node, 1, History, {Node, N})}
+            if N =< N2 -> old;
+               N > N2 ->  {new, lists:keyreplace(Node, 1, History, {Node, N})}
             end;
         false -> {new, new(Node) ++ History}
     end.
