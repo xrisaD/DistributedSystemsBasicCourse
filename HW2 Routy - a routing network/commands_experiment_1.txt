@@ -1,3 +1,4 @@
+% experiment
 erl -name sweden@192.168.28.232 -setcookie routy -connect_all false
 routy:start(r1, stockholm).
 routy:start(r2, lund).
@@ -13,4 +14,18 @@ r1 ! update.
 r2 ! update.
 r3 ! update.
 
-r1 ! {send, gothenburg, 'Hello Gothenburg, I am Stockholm!'}.
+r1 ! {send, lund, 'Hello Gothenburg, I am Stockholm!'}.
+
+% The world
+routy:start(newyork, newyork).
+routy:start(la, la).
+
+newyork ! {add, la, {la, 'america@130.229.179.191'}}.
+la ! {add, newyork, {newyork, 'america@130.229.179.191'}}.
+
+la ! {add, melbourne, {melbourne, 'australia@130.237.227.16'}}.
+
+la ! broadcast.
+newyork ! broadcast.
+la ! update.
+newyork ! update.
