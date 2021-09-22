@@ -31,7 +31,7 @@ router(Name, N, Hist, Intf, Table, Map) ->
         % monitor
         {'DOWN', Ref, process, _, _} -> 
             {ok, Down} = intf:name(Ref, Intf),
-            io:format("~w: exit recived from ~w~n", [Name, Down]),
+            io:format("~w: exit received from ~w~n", [Name, Down]),
             Intf1 = intf:remove(Down, Intf),
             router(Name, N, Hist, Intf1, Table, Map);
         % status messages

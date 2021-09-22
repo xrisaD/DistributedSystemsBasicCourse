@@ -15,3 +15,14 @@ r2 ! {send, stockholm, 'Hello Stockholm, I am Lund!'}.
 
 routy:stop(r1).
 routy:stop(r2).
+
+routy:start(r3, gothenburg).
+r3 ! {add, lund, {r2, 'sweden@130.229.149.178'}}.
+r3 ! broadcast.
+r3 ! update.
+
+r2 ! {add, gothenburg, {r3, 'sweden@130.229.149.178'}}.
+
+r1 ! {send, gothenburg, 'Hello G, I am S!'}.
+
+routy:send_status(r1).
