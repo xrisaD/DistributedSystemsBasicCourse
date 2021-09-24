@@ -1,9 +1,9 @@
 -module(time).
 -export([zero/0, inc/2, merge/2, leq/2, clock/1, update/3, safe/2]).
 
-% represent a Lamport time
+% represent a Vector Clock
 
-% return an initial Lamport value
+% return an initial value
 zero() -> 0.
 
 % return the time T incremented by one
