@@ -15,7 +15,7 @@ init(Name, Log, Seed, Sleep, Jitter) ->
     receive
         % receive your peers
         {peers, Peers} ->
-            loop(Name, Log, Peers, Sleep, Jitter);
+            loop(Name, Log, Peers, Sleep, Jitter, time:zero());
         stop ->
             ok
     end.
@@ -25,28 +25,32 @@ init(Name, Log, Seed, Sleep, Jitter) ->
 % Peers: worker's peers
 peers(Wrk, Peers) -> Wrk ! {peers, Peers}.
 
-loop(Name, Log, Peers, Sleep, Jitter)->
+loop(Name, Log, Peers, Sleep, Jitter, Timestamp)->
     Wait = random:uniform(Sleep),
     receive
         % message from one of its peers
         {msg, Time, Msg} -> 
+             % update Clock
+            NewTimestamp = time:inc(Name, time:merge(Time, Timestamp)),
             % inform logger that you received a message from a peer
             Log ! {log, Name, Time, {received, Msg}}, 
-            loop(Name, Log, Peers, Sleep, Jitter);
+            loop(Name, Log, Peers, Sleep, Jitter, NewTimestamp);
         stop -> ok;
         Error -> Log ! {log, Name, time, {error, Error}}
     % after a random sleep time select a peer process that is sent a message.
     after Wait -> 
             % select a rendom peer
             Selected = select(Peers),
-            Time = na,
+            % increase Clock
+            NewTimestamp = time:inc(Name, Timestamp),
             % create a hopefully unique random message, so that we can track the sending and receiving of a message.
             Message = {hello, random:uniform(100)},
             % send message to the selected peer
-            Selected ! {msg, Time, Message},
+            Selected ! {msg, NewTimestamp, Message},
             jitter(Jitter),
-            Log ! {log, Name, Time, {sending, Message}},
-            loop(Name, Log, Peers, Sleep, Jitter)
+            % send message to logger
+            Log ! {log, Name, NewTimestamp, {sending, Message}},
+            loop(Name, Log, Peers, Sleep, Jitter, NewTimestamp)
     end.
 
 select(Peers) -> lists:nth(random:uniform(length(Peers)), Peers).
