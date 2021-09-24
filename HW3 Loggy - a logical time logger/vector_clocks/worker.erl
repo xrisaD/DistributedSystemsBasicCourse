@@ -18,7 +18,7 @@ init(Name, Log, Seed, Sleep, Jitter) ->
         % receive your peers
         % initialize the Vector clock
         {peers, Peers} ->
-            loop(Name, Log, Peers, Sleep, Jitter, time:clock(Peers));
+            loop(Name, Log, Peers, Sleep, Jitter, time:clock(Peers ++ [Name]));
         stop ->
             ok
     end.
@@ -34,8 +34,8 @@ loop(Name, Log, Peers, Sleep, Jitter, Vector)->
         % message from one of its peers
         {msg, PeerVector, PeerName, Msg} -> 
             % update Vector 
-            % update two entries: your entry and the peer's entry that sent you the message
-            UpdatedVector = Vector,
+            % update your entry and all other entries based on peer's vector
+            UpdatedVector = time:vector_update(PeerVector, Vector, Name),
             % inform logger that you received a message from a peer
             % send your vector
             Log ! {log, Name, UpdatedVector, {received, Msg}}, 
@@ -47,7 +47,7 @@ loop(Name, Log, Peers, Sleep, Jitter, Vector)->
             % select a random peer
             Selected = select(Peers),
             % increase your entry at the vector
-            UpdatedVector = Vector,
+            UpdatedVector = time:inc(Vector, Name),
             % create a hopefully unique random message, so that we can track the sending and receiving of a message.
             Message = {hello, random:uniform(100)},
             % send message to the selected peer

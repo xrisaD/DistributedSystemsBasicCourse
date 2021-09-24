@@ -9,21 +9,19 @@ init(Nodes) -> Clock = time:clock(Nodes) ,loop(Clock, []).
 
 loop(Clock, Queue) ->
     receive
-        {log, From, Time, Msg} -> 
+        {log, From, Vector, Msg} -> 
             % update the clock 
-            UpdatedClock = time:update(From, Time, Clock),
+            UpdatedClock = time:update(Clock, Vector),
             % add the message to the hold-back queue
-            UpdatedQueue = queue({From, Time, Msg}, Queue),
+            UpdatedQueue = queue({From, Vector, Msg}, Queue),
             % then go through the queue to find messages that are now safe to print
             % create the updated queue which won't contain the printed messages
-            % io:format("Cloooock  ~p~n", [UpdatedClock]),
-            % io:format("QQQQQQQQQ ~p~n", [UpdatedQueue]),
             UpdatedQueue2 = lists:foldl(
-                            fun({From, Time, Msg}, NewQueue) ->
+                            fun({From, Vector, Msg}, NewQueue) ->
                                 % check if it's safe
-                                case time:safe(Time, UpdatedClock) of
-                                    true-> log(From, Time, Msg), NewQueue2 = NewQueue; 
-                                    false-> NewQueue2 = queue({From, Time, Msg}, NewQueue) 
+                                case time:safe(Vector, UpdatedClock) of
+                                    true-> log(From, Vector, Msg), NewQueue2 = NewQueue; 
+                                    false-> NewQueue2 = queue({From, Vector, Msg}, NewQueue) 
                                 end, 
                                 NewQueue2 
                             end,
