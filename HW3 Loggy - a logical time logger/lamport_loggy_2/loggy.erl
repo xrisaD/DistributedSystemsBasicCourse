@@ -16,8 +16,6 @@ loop(Clock, Queue) ->
             UpdatedQueue = queue({From, Time, Msg}, Queue),
             % then go through the queue to find messages that are now safe to print
             % create the updated queue which won't contain the printed messages
-            % io:format("Cloooock  ~p~n", [UpdatedClock]),
-            % io:format("QQQQQQQQQ ~p~n", [UpdatedQueue]),
             UpdatedQueue2 = lists:foldl(
                             fun({From, Time, Msg}, NewQueue) ->
                                 % check if it's safe
@@ -27,11 +25,11 @@ loop(Clock, Queue) ->
                                 end, 
                                 NewQueue2 
                             end,
-                            [], UpdatedQueue),
+                            [], lists:keysort(2, UpdatedQueue)),
             loop(UpdatedClock, UpdatedQueue2);
         stop -> ok
     end.
 
 log(From, Time, Msg) -> io:format("log: ~w ~w ~p~n", [Time, From, Msg]).
 
-queue({From, Time, Msg}, Messages) -> lists:keysort(2, [{From, Time, Msg}] ++ Messages).
+queue({From, Time, Msg}, Messages) -> [{From, Time, Msg}] ++ Messages.

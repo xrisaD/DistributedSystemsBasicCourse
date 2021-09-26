@@ -5,17 +5,18 @@ start(Nodes) -> spawn_link(fun() ->init(Nodes) end).
 
 stop(Logger) -> Logger ! stop.
 
-init(Nodes) -> Clock = time:clock(Nodes) ,loop(Clock, []).
+init(Nodes) -> Clock = time:clock(Nodes), loop(Clock, []).
 
 loop(Clock, Queue) ->
     receive
         {log, From, Vector, Msg} -> 
             % update the clock 
-            UpdatedClock = time:update(Clock, Vector),
+            UpdatedClock = time:update(From, Vector, Clock),
             % add the message to the hold-back queue
             UpdatedQueue = queue({From, Vector, Msg}, Queue),
             % then go through the queue to find messages that are now safe to print
             % create the updated queue which won't contain the printed messages
+            io:format("is safe?~n"),
             UpdatedQueue2 = lists:foldl(
                             fun({From, Vector, Msg}, NewQueue) ->
                                 % check if it's safe
@@ -27,9 +28,10 @@ loop(Clock, Queue) ->
                             end,
                             [], UpdatedQueue),
             loop(UpdatedClock, UpdatedQueue2);
-        stop -> ok
+        stop -> io:format("MESSAGES IN Q: ~p~n", [Queue]), ok
     end.
 
-log(From, Time, Msg) -> io:format("log: ~w ~w ~p~n", [Time, From, Msg]).
+log(From, Time, Msg) -> io:format("log: ~w ~w ~p~n", [From, Time, Msg]).
 
-queue({From, Time, Msg}, Messages) -> lists:keysort(2, [{From, Time, Msg}] ++ Messages).
+queue({From, Vector, Msg}, Messages) ->
+                                        [{From, Vector, Msg}] ++ Messages.

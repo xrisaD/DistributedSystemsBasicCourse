@@ -1,24 +1,24 @@
 -module(worker).
--export([start/5, stop/1, peers/2]).
-
-% A worker has a vector
+-export([start/6, stop/1, peers/2]).
 
 % Name: worker's unique name
 % Logger: the logger
 % Seed: a unique value for the random generator
 % Sleep: determine how active the worker is sending messages
 % Jitter:  introduce a random delay between the sending of a message and the sending of a log entry
-start(Name, Logger, Seed, Sleep, Jitter) -> spawn_link(fun() -> init(Name, Logger, Seed, Sleep, Jitter) end).
+start(Name, Logger, Seed, Sleep, Jitter, Nodes) -> spawn_link(fun() -> init(Name, Logger, Seed, Sleep, Jitter, Nodes) end).
 
 stop(Worker) -> Worker ! stop.
 
-init(Name, Log, Seed, Sleep, Jitter) ->
+init(Name, Log, Seed, Sleep, Jitter, Nodes) ->
     random:seed(Seed, Seed, Seed),
     receive
         % receive your peers
-        % initialize the Vector clock
+        % initialize the Lamport time
         {peers, Peers} ->
-            loop(Name, Log, Peers, Sleep, Jitter, time:clock(Peers ++ [Name]));
+            % create worker's vector, one number for each peer, all set to zero
+            Vector = time:vector(Nodes),
+            loop(Name, Log, Peers, Sleep, Jitter, Vector);
         stop ->
             ok
     end.
@@ -32,12 +32,10 @@ loop(Name, Log, Peers, Sleep, Jitter, Vector)->
     Wait = random:uniform(Sleep),
     receive
         % message from one of its peers
-        {msg, PeerVector, PeerName, Msg} -> 
-            % update Vector 
-            % update your entry and all other entries based on peer's vector
-            UpdatedVector = time:vector_update(PeerVector, Vector, Name),
+        {msg, Vector2, Msg} -> 
+            % update Vector
+            UpdatedVector = time:merge(time:inc(Name, Vector), Vector2),
             % inform logger that you received a message from a peer
-            % send your vector
             Log ! {log, Name, UpdatedVector, {received, Msg}}, 
             loop(Name, Log, Peers, Sleep, Jitter, UpdatedVector);
         stop -> ok;
@@ -46,12 +44,12 @@ loop(Name, Log, Peers, Sleep, Jitter, Vector)->
     after Wait -> 
             % select a random peer
             Selected = select(Peers),
-            % increase your entry at the vector
-            UpdatedVector = time:inc(Vector, Name),
+            % update Vector
+            UpdatedVector = time:inc(Name, Vector),
             % create a hopefully unique random message, so that we can track the sending and receiving of a message.
             Message = {hello, random:uniform(100)},
             % send message to the selected peer
-            Selected ! {msg, UpdatedVector, Name, Message},
+            Selected ! {msg, UpdatedVector, Message},
             jitter(Jitter),
             % send message to logger
             Log ! {log, Name, UpdatedVector, {sending, Message}},

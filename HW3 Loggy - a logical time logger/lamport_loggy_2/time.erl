@@ -16,15 +16,17 @@ merge(Ti, Tj) -> max(Ti, Tj).
 leq(Ti,Tj) -> (Ti =< Tj).
 
 % return a clock that can keep track of the nodes
-clock(Nodes) -> lists:map(fun(Node) -> {Node, 0} end, Nodes).
+clock(Nodes) -> lists:map(fun(Node) -> {Node, zero()} end, Nodes).
 
 % return a clock that has been updated given that we have received a log message from a node at a given time
-update(Node, Time, Clock) -> lists:keyreplace(Node, 1, Clock, {Node, Time}).
+update(Node, Time, Clock) -> {_, Time2} = lists:keyfind(Node, 1, Clock),
+                            Exp = leq(Time2, Time),
+                            if Exp -> lists:keyreplace(Node, 1, Clock, {Node, Time});
+                            true -> Clock end.
 
 % is it safe to log an event that happened at a given time, true or false
 safe(Time, Clock) -> 
     % min time
     Times = lists:foldl(fun({X, Y}, Times) -> [Y|Times] end, [], Clock),
     MinTime = lists:min(Times),
-    % io:format("Min: ~p ~n",[MinTime]),
     leq(Time, MinTime).
