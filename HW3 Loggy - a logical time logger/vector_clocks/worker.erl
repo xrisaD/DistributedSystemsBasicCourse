@@ -1,5 +1,5 @@
 -module(worker).
--export([start/6, stop/1, peers/2]).
+-export([start/5, stop/1, peers/2]).
 
 % Name: worker's unique name
 % Logger: the logger
@@ -16,7 +16,7 @@ init(Name, Log, Seed, Sleep, Jitter) ->
         % receive your peers
         % initialize the Lamport time
         {peers, Peers} ->
-            loop(Name, Log, Peers, Sleep, Jitter, vec:zero());
+            loop(Name, Log, Peers, Sleep, Jitter, [{Name, 0}]);
         stop ->
             ok
     end.
