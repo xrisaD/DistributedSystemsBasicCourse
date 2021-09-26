@@ -3,11 +3,14 @@
 
 start(Nodes) -> spawn_link(fun() ->init(Nodes) end).
 
-stop(Logger) -> Logger ! stop.
+stop(Logger) -> Logger ! {self(), stop},
+    receive
+        T -> T
+    end.
 
-init(Nodes) -> Clock = time:clock(Nodes) ,loop(Clock, []).
+init(Nodes) -> Clock = time:clock(Nodes), loop(Clock, [], 0).
 
-loop(Clock, Queue) ->
+loop(Clock, Queue, MaxInQ) ->
     receive
         {log, From, Time, Msg} -> 
             % update the clock 
@@ -26,8 +29,9 @@ loop(Clock, Queue) ->
                                 NewQueue2 
                             end,
                             [], lists:keysort(2, UpdatedQueue)),
-            loop(UpdatedClock, UpdatedQueue2);
-        stop -> ok
+            UpdatedMaxInQ = max(MaxInQ, length(UpdatedQueue2)),
+            loop(UpdatedClock, UpdatedQueue2, UpdatedMaxInQ);
+        {Pid, stop} -> Pid ! MaxInQ % return the max in queue
     end.
 
 log(From, Time, Msg) -> io:format("log: ~w ~w ~p~n", [Time, From, Msg]).

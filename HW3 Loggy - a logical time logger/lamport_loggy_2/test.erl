@@ -1,5 +1,5 @@
 -module(test).
--export([run/2]).
+-export([run/2, run2/3]).
 
 % report on your initial observations
 run(Sleep, Jitter) ->
@@ -18,8 +18,12 @@ run(Sleep, Jitter) ->
     % sleep 
     timer:sleep(5000),
     % stop logger and workers
-    loggy:stop(Log),
+    MaxInQ = loggy:stop(Log),
     worker:stop(A),
     worker:stop(B),
     worker:stop(C),
-    worker:stop(D).
+    worker:stop(D),
+    MaxInQ.
+
+run2(Sleep, Jitter, N) ->
+    lists:sum([run(Sleep, Jitter) || _ <- lists:seq(1, N)])/N.
