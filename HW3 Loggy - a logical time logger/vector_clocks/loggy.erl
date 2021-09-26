@@ -1,11 +1,11 @@
 -module(loggy).
 -export([start/1, stop/1]).
 
-start(Nodes) -> spawn_link(fun() ->init(Nodes) end).
+start() -> spawn_link(fun() ->init() end).
 
 stop(Logger) -> Logger ! stop.
 
-init(Nodes) -> Clock = time:clock(Nodes), loop(Clock, []).
+init() -> Clock = vec:clock(), loop(Clock, []).
 
 loop(Clock, Queue) ->
     receive
@@ -16,7 +16,6 @@ loop(Clock, Queue) ->
             UpdatedQueue = queue({From, Vector, Msg}, Queue),
             % then go through the queue to find messages that are now safe to print
             % create the updated queue which won't contain the printed messages
-            io:format("is safe?~n"),
             UpdatedQueue2 = lists:foldl(
                             fun({From, Vector, Msg}, NewQueue) ->
                                 % check if it's safe
@@ -28,10 +27,14 @@ loop(Clock, Queue) ->
                             end,
                             [], UpdatedQueue),
             loop(UpdatedClock, UpdatedQueue2);
-        stop -> io:format("MESSAGES IN Q: ~p~n", [Queue]), ok
+        stop -> ok
     end.
 
 log(From, Time, Msg) -> io:format("log: ~w ~w ~p~n", [From, Time, Msg]).
 
-queue({From, Vector, Msg}, Messages) ->
-                                        [{From, Vector, Msg}] ++ Messages.
+queue({From, Vector, Msg}, Messages) -> lists:sort(fun(A, B) -> 
+                                        % get Vectors
+                                        {_, VectorA, _} = A,
+                                        {_, VectorB, _} = B,
+                                        vec:isLeqOrConcurrent(VectorA, VectorB) end, 
+                                        [{From, Vector, Msg}] ++ Messages).

@@ -5,12 +5,12 @@
 run(Sleep, Jitter) ->
     % start logger
     Nodes = [john, paul, ringo, george],
-    Log = loggy:start(Nodes),
+    Log = loggy:start(),
     % start 4 workers with a unique seed
-    A = worker:start(john, Log, 13, Sleep, Jitter, Nodes),
-    B = worker:start(paul, Log, 23, Sleep, Jitter, Nodes),
-    C = worker:start(ringo, Log, 36, Sleep, Jitter, Nodes),
-    D = worker:start(george, Log, 49, Sleep, Jitter, Nodes),
+    A = worker:start(john, Log, 13, Sleep, Jitter),
+    B = worker:start(paul, Log, 23, Sleep, Jitter),
+    C = worker:start(ringo, Log, 36, Sleep, Jitter),
+    D = worker:start(george, Log, 49, Sleep, Jitter),
     % send peers
     worker:peers(A, [B, C, D]),
     worker:peers(B, [A, C, D]),

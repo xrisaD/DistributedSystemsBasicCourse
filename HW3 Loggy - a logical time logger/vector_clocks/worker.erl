@@ -6,19 +6,17 @@
 % Seed: a unique value for the random generator
 % Sleep: determine how active the worker is sending messages
 % Jitter:  introduce a random delay between the sending of a message and the sending of a log entry
-start(Name, Logger, Seed, Sleep, Jitter, Nodes) -> spawn_link(fun() -> init(Name, Logger, Seed, Sleep, Jitter, Nodes) end).
+start(Name, Logger, Seed, Sleep, Jitter) -> spawn_link(fun() -> init(Name, Logger, Seed, Sleep, Jitter) end).
 
 stop(Worker) -> Worker ! stop.
 
-init(Name, Log, Seed, Sleep, Jitter, Nodes) ->
+init(Name, Log, Seed, Sleep, Jitter) ->
     random:seed(Seed, Seed, Seed),
     receive
         % receive your peers
         % initialize the Lamport time
         {peers, Peers} ->
-            % create worker's vector, one number for each peer, all set to zero
-            Vector = time:vector(Nodes),
-            loop(Name, Log, Peers, Sleep, Jitter, Vector);
+            loop(Name, Log, Peers, Sleep, Jitter, vec:zero());
         stop ->
             ok
     end.
@@ -34,7 +32,7 @@ loop(Name, Log, Peers, Sleep, Jitter, Vector)->
         % message from one of its peers
         {msg, Vector2, Msg} -> 
             % update Vector
-            UpdatedVector = time:merge(time:inc(Name, Vector), Vector2),
+            UpdatedVector = vec:merge(vec:inc(Name, Vector), Vector2),
             % inform logger that you received a message from a peer
             Log ! {log, Name, UpdatedVector, {received, Msg}}, 
             loop(Name, Log, Peers, Sleep, Jitter, UpdatedVector);
@@ -45,7 +43,7 @@ loop(Name, Log, Peers, Sleep, Jitter, Vector)->
             % select a random peer
             Selected = select(Peers),
             % update Vector
-            UpdatedVector = time:inc(Name, Vector),
+            UpdatedVector = vec:inc(Name, Vector),
             % create a hopefully unique random message, so that we can track the sending and receiving of a message.
             Message = {hello, random:uniform(100)},
             % send message to the selected peer
