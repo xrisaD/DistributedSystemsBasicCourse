@@ -1,12 +1,13 @@
+% now: 192.168.28.232
 % experiment
 erl -name sweden@192.168.28.232 -setcookie routy -connect_all false
 routy:start(r1, stockholm).
 routy:start(r2, lund).
 routy:start(r3, gothenburg).
-
-r1 ! {add, lund, {r2, 'sweden@192.168.28.232'}}.  
+r1 ! {add, lund, {r2, 'sweden@192.168.28.232'}}. 
+r2 ! {add, stockholm, {r1, 'sweden@192.168.28.232'}}. 
 r2 ! {add, gothenburg, {r3, 'sweden@192.168.28.232'}}.
-
+r3 ! {add, lund, {r2, 'sweden@192.168.28.232'}}.
 r1 ! broadcast.
 r2 ! broadcast.
 r3 ! broadcast.
