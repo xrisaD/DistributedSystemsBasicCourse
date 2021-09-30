@@ -1,0 +1,15 @@
+% simple example for testing
+X = node2:start(1).
+Y = node2:start(2, X).
+Z = node2:start(5, Y).
+
+Z ! {add, 5, 5, self(), self()}.
+
+Z ! info. % Z should have the store updated with {5,5} saved
+
+Z ! {add, 1.5, 5, self(), self()}. % Y should have the store updated with {1.5, 5} saved
+
+Z ! {add, 10, 5, self(), self()}. % X should have the store updated with {10, 5} saved
+
+% experiments:
+test:run().

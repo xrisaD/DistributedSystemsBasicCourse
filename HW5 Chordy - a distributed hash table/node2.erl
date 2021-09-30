@@ -1,4 +1,4 @@
--module(node1).
+-module(node2).
 -export([start/1, start/2]).
 
 -define(Timeout, 1000).
@@ -53,8 +53,8 @@ node(Id, Predecessor, Successor, Store) ->
             node(Id, Predecessor, Successor, Store);
         % a new node informs us of its existence
         {notify, New} ->
-            Pred = notify(New, Id, Predecessor, Store),
-            node(Id, Pred, Successor, Store);
+            {Pred, UpdatedStore} = notify(New, Id, Predecessor, Store),
+            node(Id, Pred, Successor, UpdatedStore);
         % a predecessor needs to know our predecessor
         {request, Peer} ->
             request(Peer, Predecessor),
@@ -70,7 +70,7 @@ node(Id, Predecessor, Successor, Store) ->
             node(Id, Predecessor, Successor, Store);
         % added for debugging purposes
         info -> 
-            io:format("Predecessor: ~p~nSuccessor~p~n", [Predecessor, Successor]),
+            io:format("ID: ~p~nPredecessor: ~p~nSuccessor~p~nStore~p~n", [Id, Predecessor, Successor, Store]),
              node(Id, Predecessor, Successor, Store);
         % Probe messages
         probe ->
@@ -98,20 +98,20 @@ node(Id, Predecessor, Successor, Store) ->
 
 % storage functions
 add(Key, Value, Qref, Client, Id, {Pkey, _}, {_, Spid}, Store) ->
-    case 0 of
-    true ->
-        Client ! {Qref, ok},
-        % return the updated store
-        storage:add(Key, Value, Store);
-    false ->
-        % send message to our succesor
-        Spid ! {add, Key, Value, Qref, Client},
-        % the store won't be updated
-        Store
+    case key:between(Key, Pkey, Id) of
+        true ->
+            Client ! {Qref, ok},
+            % return the updated store
+            storage:add(Key, Value, Store);
+        false ->
+            % send message to our succesor
+            Spid ! {add, Key, Value, Qref, Client},
+            % the store won't be updated
+            Store
     end.
 
 lookup(Key, Qref, Client, Id, {Pkey, _}, Successor, Store) ->
-    case 0 of
+    case key:between(Key, Pkey, Id) of
     true ->
         Result = storage:lookup(Key, Store),
         % send to the requester
@@ -121,7 +121,6 @@ lookup(Key, Qref, Client, Id, {Pkey, _}, Successor, Store) ->
         % send message to our successor
         Spid ! {lookup, Key, Qref, Client}
     end.
-
 
 % send a request message to its successor.
 stabilize({_, Spid}) -> Spid ! {request, self()}.
