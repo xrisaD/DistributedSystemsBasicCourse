@@ -148,30 +148,30 @@ lookup(Key, Qref, Client, Id, {Pkey, _}, Successor, Store) ->
     end.
 
 % send a request message to its successor.
-stabilize({_, Spid}) -> Spid ! {request, self()}.
+stabilize({_, _, Spid}) -> Spid ! {request, self()}.
 
 % Pred: our successor's current predecessor 
 stabilize(Pred, Id, Successor, Nx) ->
-    {Skey, Spid} = Successor,
+    {Skey, Sref, Spid} = Successor,
     case Pred of
         nil ->
             % notify the successor about our existence
             Spid ! {notify, {Id, self()}}, 
             {Successor, Nx};
-        {Id, _} ->
+        {Id, _, _} ->
             % it is pointing back to us we don’t have to do anything.
-            Successor;
-        {Skey, _} ->
+            {Successor, Nx};
+        {Skey, _, _} ->
             % it is pointing to itself we should of course notify it about our existence
             Spid ! {notify, {Id, self()}}, 
             {Successor, Nx};
-        {Xkey, Xpid} ->
+        {Xkey, _, Xpid} ->
             case key:between(Xkey, Id, Skey) of
                 true ->
                     %  we should place ourselves behind the predecessor
                     Xpid ! {request, self()},
                     % demonitor the previous successor
-                    drop(Spid),
+                    drop(Sref),
                     % because our new successor is the previous predecessor it is already monitored
                     % the predecessor will become our successor
                     % so our previous successor will become the next successor
@@ -186,8 +186,8 @@ stabilize(Pred, Id, Successor, Nx) ->
 
 request(Peer, Predecessor, Next) ->
     case Predecessor of
-        nil -> Peer ! {status, nil};
-        {Pkey, Ppid} -> Peer ! {status, {Pkey, Ppid}, Next}
+        nil -> Peer ! {status, nil, nil};
+        {Pkey, Pref, Ppid} -> Peer ! {status, {Pkey, Pref, Ppid}, Next}
     end.
 
 

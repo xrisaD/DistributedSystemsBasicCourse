@@ -13,3 +13,10 @@ Z ! {add, 10, 5, self(), self()}. % X should have the store updated with {10, 5}
 
 % experiments:
 test:run().
+
+
+
+% simple example for testing
+X = node3:start(1).
+Y = node3:start(2, X).
+Z = node3:start(5, Y).
