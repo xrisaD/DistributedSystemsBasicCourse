@@ -97,11 +97,11 @@ node(Id, Predecessor, Successor, Store) ->
     end.
 
 % storage functions
-
 add(Key, Value, Qref, Client, Id, {Pkey, _}, {_, Spid}, Store) ->
     case 0 of
     true ->
         Client ! {Qref, ok},
+        % return the updated store
         storage:add(Key, Value, Store);
     false ->
         % send message to our succesor
@@ -162,24 +162,23 @@ request(Peer, Predecessor) ->
 
 % return our predecessor and the updated store
 notify({Nkey, Npid}, Id, Predecessor, Store) ->
-case Predecessor of
-    nil ->
-        Keep = handover(Id, Store, Nkey, Npid),
-        {{Nkey, Npid}, Keep};
-    {Pkey, _} ->
-        case key:between(Nkey, Pkey, Id) of
-            true -> 
-                Keep = handover(Id, Store, Nkey, Npid),
-                {{Nkey, Npid}, Keep};
-            false -> {Predecessor,Store}
-        end
+    case Predecessor of
+        nil ->
+            Keep = handover(Id, Store, Nkey, Npid),
+            {{Nkey, Npid}, Keep};
+        {Pkey, _} ->
+            case key:between(Nkey, Pkey, Id) of
+                true -> 
+                    Keep = handover(Id, Store, Nkey, Npid),
+                    {{Nkey, Npid}, Keep};
+                false -> {Predecessor,Store}
+            end
     end.
 
 handover(Id, Store, Nkey, Npid) ->
-    {Keep, Rest} = storage:split(Id, Nkey, Store),
-    % handover to the new predecessor the rest of the entries 
-    % we keep the entries betweeen (Pkey, Id]
-    % here the current node is the predecessor so (Id, Nkey)
+    % we keep the entries betweeen (Pkey, Id], where Pkey is the predecessor's id
+    {Keep, Rest} = storage:split(Nkey, Id, Store),
+    % we handover the rest of the entries which aren't ours to our successor
     Npid ! {handover, Rest},
     Keep.
 
