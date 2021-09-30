@@ -24,14 +24,14 @@ init(Id, Peer) ->
     % a node starts with null predecessor
     Predecessor = nil,
     % create or connect to a ring
-    {ok, Successor} = connect(Id, Peer),
+    {ok, Successor, Next} = connect(Id, Peer),
     % stabilize
     schedule_stabilize(),
     % start node
-    node(Id, Predecessor, Successor, storage:create(), Successor).
+    node(Id, Predecessor, Successor, storage:create(), Next).
 
 % The first node will have itself as a predecessor
-connect(Id, nil) -> {ok, {Id, nil, self()}};
+connect(Id, nil) ->S =self(), {ok, {Id, nil, S}, {Id, S}};
 
 connect(Id, Peer) ->
     % send a key message to the know Peer
@@ -42,7 +42,7 @@ connect(Id, Peer) ->
     receive
         {Qref, Skey} ->
             % receive our predecessor's key and send it back to the init function
-            {ok, {Skey, Ref, Peer}}
+            {ok, {Skey, Ref, Peer}, nil}
         after ?Timeout -> io:format("Time out: no response~n",[])
     end.
 
@@ -102,7 +102,7 @@ node(Id, Predecessor, Successor, Store, Next) ->
         % monitor both predecessor and successor
         {'DOWN', Ref, process, _, _} ->
             {Pred, Succ, Nxt} = down(Ref, Predecessor, Successor, Next),
-            node(Id, Pred, Succ, Nxt, Store)
+            node(Id, Pred, Succ, Store, Nxt)
     end.
 
 
@@ -148,16 +148,18 @@ lookup(Key, Qref, Client, Id, {Pkey, _}, Successor, Store) ->
     end.
 
 % send a request message to its successor.
-stabilize({_, _, Spid}) -> Spid ! {request, self()}.
+stabilize({Skey, _, Spid}) -> Spid ! {request, self()}.
 
 % Pred: our successor's current predecessor 
 stabilize(Pred, Id, Successor, Nx) ->
     {Skey, Sref, Spid} = Successor,
     case Pred of
-        nil ->
+        nil -> 
             % notify the successor about our existence
-            Spid ! {notify, {Id, self()}}, 
-            {Successor, Nx};
+            Spid ! {notify, {Id, self()}},
+            if Nx == nil -> io:format("NIL: ~p ~p~n",[Successor, Id]),{Successor, {Skey, Spid}}; 
+               Nx /= nill -> {Successor, Nx}
+            end;
         {Id, _, _} ->
             % it is pointing back to us we don’t have to do anything.
             {Successor, Nx};
@@ -172,10 +174,10 @@ stabilize(Pred, Id, Successor, Nx) ->
                     Xpid ! {request, self()},
                     % demonitor the previous successor
                     drop(Sref),
-                    % because our new successor is the previous predecessor it is already monitored
                     % the predecessor will become our successor
                     % so our previous successor will become the next successor
-                    {Pred, Successor}; 
+                    % because our new successor is the previous predecessor it is already monitored
+                    {Pred, {Skey, Spid}}; 
                 false -> 
                     % slide in between the two nodes
                     % inform our successor of our existence.
@@ -186,7 +188,7 @@ stabilize(Pred, Id, Successor, Nx) ->
 
 request(Peer, Predecessor, Next) ->
     case Predecessor of
-        nil -> Peer ! {status, nil, nil};
+        nil -> Peer ! {status, nil, Next};
         {Pkey, Pref, Ppid} -> Peer ! {status, {Pkey, Pref, Ppid}, Next}
     end.
 
@@ -198,12 +200,12 @@ notify({Nkey, Npid}, Id, Predecessor, Store) ->
             Keep = handover(Id, Store, Nkey, Npid),
             Ref = monitor(Npid),
             {{Nkey, Ref, Npid}, Keep};
-        {Pkey, Pid} ->
+        {Pkey, Pref, _} ->
             case key:between(Nkey, Pkey, Id) of
                 true -> 
                     Keep = handover(Id, Store, Nkey, Npid),
                     % demonitor the previous predecessor
-                    drop(Pid),
+                    drop(Pref),
                     % monitor the new predecessor
                     Ref = monitor(Npid),
                     {{Nkey, Ref, Npid}, Keep};
