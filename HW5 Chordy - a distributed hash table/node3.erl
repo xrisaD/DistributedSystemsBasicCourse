@@ -102,7 +102,8 @@ node(Id, Predecessor, Successor, Store, Next) ->
         % monitor both predecessor and successor
         {'DOWN', Ref, process, _, _} ->
             {Pred, Succ, Nxt} = down(Ref, Predecessor, Successor, Next),
-            node(Id, Pred, Succ, Store, Nxt)
+            node(Id, Pred, Succ, Store, Nxt);
+        stop -> stop
     end.
 
 
