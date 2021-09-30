@@ -4,49 +4,65 @@
 
 -define(Timeout, 1000).
 
+run_first_experiment(ExistingKeys, NewKeys, FirstNode) ->
+    % First Experiment: One machine handles 4000 lookups  
+    io:format("Experiment 1:~n~nOne machine with 4000 lookups~n"),
+    Exp1Keys = ExistingKeys ++ ExistingKeys ++ NewKeys ++ NewKeys,
+    check(Exp1Keys, FirstNode, true).
 
-run() -> 
+run_second_experiment(ExistingKeys, NewKeys, FirstNode, ThreeNodes) ->
+    % Second Experiment: 4 machine handles 1000 lookups each
+    Total = init_run_check(ExistingKeys, NewKeys, FirstNode, ThreeNodes),
+    io:format("~n~nExperiment 2:~n4 machines with 1000 lookups each~n"),
+    io:format("Total: ~p~n", [Total]).
+
+% Experiment: the number of experiment, one or two
+% M: the number of nodes we want to be created
+run(Experiment, M) -> 
     N = 1000,
     % 4 machines building the ring
     % 4 machines testing the performance
 
+    % create the ring
+    {FirstNode, ThreeNodes} = createRing(M-1),
+    timer:sleep(20000),
+    % add all keys to the first node
+    {ExistingKeys, NewKeys} = add_all_keys(N, FirstNode),
+    timer:sleep(1000),
+
+    case Experiment of 
+        1 -> run_first_experiment(ExistingKeys, NewKeys, FirstNode);
+        2 -> run_second_experiment(ExistingKeys, NewKeys, FirstNode, ThreeNodes)
+    end
+    .
+
+createRing(M) -> 
     % add 1 node to the ring
     FirstNode = start(node2),
     % add 3 extra nodes to the ring
-    ThreeNodes = start(node2, 3, FirstNode),
-    timer:sleep(10000),
+    ThreeNodes = start(node2, M, FirstNode),
+    {FirstNode, ThreeNodes}.
+
+add_all_keys(N, FirstNode) ->
     % add N keys, all starting from the first node
     ExistingKeys = keys(N),
     add(ExistingKeys, FirstNode),
     % generate N keys
     NewKeys = keys(N),
+    {ExistingKeys, NewKeys}.
 
-    timer:sleep(10000),
-    % First Experiment: One machine handles 4000 lookups  
-    io:format("Experiment 1:~n~nOne machine with 4000 lookups~n"),
-    Exp1Keys = ExistingKeys ++ ExistingKeys ++ NewKeys ++ NewKeys,
-    check(Exp1Keys, FirstNode, true),
-
-    timer:sleep(1000),
-
-    % % Second Experiment: 4 machine handles 1000 lookups each
-    Total = init_run_check(ExistingKeys, NewKeys, FirstNode, ThreeNodes),
-     io:format("~n~nExperiment 2:~n4 machines with 1000 lookups each~n"),
-    io:format("Total: ~p~n", [Total])
-    .
-
-init_run_check(ExistingKeys, NewKeys, FirstNode, ThreeNodes) -> 
+init_run_check(ExistingKeys, NewKeys, FirstNode, AllNodes) -> 
     S = self(),
     % First Node
     spawn(fun() -> run_check(ExistingKeys, FirstNode, S) end),
     % Second Node
-    spawn(fun() -> run_check(NewKeys, lists:nth(1, ThreeNodes), S) end),
+    spawn(fun() -> run_check(NewKeys, lists:nth(1, AllNodes), S) end),
     % Third Node
-    spawn(fun() -> run_check(ExistingKeys, lists:nth(2, ThreeNodes), S) end),
+    spawn(fun() -> run_check(ExistingKeys, lists:nth(2, AllNodes), S) end),
     % Last Node
-    spawn(fun() -> run_check(NewKeys, lists:nth(3, ThreeNodes), S) end),
+    spawn(fun() -> run_check(NewKeys, lists:nth(3, AllNodes), S) end),
     
-    gather_results(3, 0).
+    gather_results(4, 0).
 
 gather_results(0, Total) -> Total;
 
@@ -120,7 +136,8 @@ check(Keys, P, Print) ->
     case Print of 
         true ->
             io:format("~w lookup operation in ~w ms ~n", [length(Keys), Done]),
-            io:format("~w lookups failed, ~w caused a timeout ~n", [Failed, Timeout]);
+            io:format("~w lookups failed, ~w caused a timeout ~n", [Failed, Timeout]),
+            Done;
         false-> Done
     end.
 
