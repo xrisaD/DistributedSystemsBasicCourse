@@ -142,7 +142,8 @@ create_probe(Id, Successor) ->
     Spid ! {probe, Id, [Id], T}.
 
 remove_probe(T, Nodes) -> 
-    TotalTime = timer:now_diff(erlang:now(),T),
+    Now = erlang:system_time(micro_seconds),
+    TotalTime = Now - T,
     io:format("T: ~p~nNodes:~p~n", [TotalTime, Nodes]).
 
 forward_probe(Ref, T, Nodes, Id, Successor) -> 
