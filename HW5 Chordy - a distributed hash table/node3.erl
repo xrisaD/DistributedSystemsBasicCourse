@@ -1,4 +1,4 @@
--module(node2).
+-module(node3).
 -export([start/1, start/2]).
 
 -define(Timeout, 1000).
@@ -31,17 +31,18 @@ init(Id, Peer) ->
     node(Id, Predecessor, Successor, storage:create(), Successor).
 
 % The first node will have itself as a predecessor
-connect(Id, nil) -> {ok, {Id, self()}};
+connect(Id, nil) -> {ok, {Id, nil, self()}};
 
 connect(Id, Peer) ->
     % send a key message to the know Peer
     % we need to know its key
     Qref = make_ref(),
     Peer ! {key, Qref, self()},
+    Ref = monitor(Peer),
     receive
         {Qref, Skey} ->
             % receive our predecessor's key and send it back to the init function
-            {ok, {Skey, Peer}}
+            {ok, {Skey, Ref, Peer}}
         after ?Timeout -> io:format("Time out: no response~n",[])
     end.
 
@@ -98,10 +99,10 @@ node(Id, Predecessor, Successor, Store, Next) ->
         {handover, Elements} ->
             Merged = storage:merge(Store, Elements),
             node(Id, Predecessor, Successor, Merged, Next);
-        % monitore both predecessor and successor
+        % monitor both predecessor and successor
         {'DOWN', Ref, process, _, _} ->
             {Pred, Succ, Nxt} = down(Ref, Predecessor, Successor, Next),
-            node(Id, Pred, Succ, Nxt, Store); 
+            node(Id, Pred, Succ, Nxt, Store)
     end.
 
 
@@ -110,15 +111,15 @@ node(Id, Predecessor, Successor, Store, Next) ->
 % if our predecessor crashed
 down(Ref, {_, Ref, _}, Successor, Next) -> 
     drop(Ref), 
-    {nil, Successor, Nxt};
+    {nil, Successor, Next};
 
 % if our successor crashed
 down(Ref, Predecessor, {_, Ref, _}, {Nkey, Npid}) ->
     drop(Ref),
-    monitor(Npid),
+    Nref = monitor(Npid),
     % inform our new successor of our existance
     Npid ! {notify, {Nkey, Npid}}, 
-    {Predecessor, {Nkey, Nref, Npid}, nil}
+    {Predecessor, {Nkey, Nref, Npid}, nil}.
 
 % storage functions
 add(Key, Value, Qref, Client, Id, {Pkey, _}, {_, Spid}, Store) ->
@@ -128,7 +129,7 @@ add(Key, Value, Qref, Client, Id, {Pkey, _}, {_, Spid}, Store) ->
             % return the updated store
             storage:add(Key, Value, Store);
         false ->
-            % send message to our succesor
+            % send message to our successor
             Spid ! {add, Key, Value, Qref, Client},
             % the store won't be updated
             Store
@@ -156,8 +157,6 @@ stabilize(Pred, Id, Successor, Nx) ->
         nil ->
             % notify the successor about our existence
             Spid ! {notify, {Id, self()}}, 
-            % monitor the successor
-            monitor(Spid),
             {Successor, Nx};
         {Id, _} ->
             % it is pointing back to us we don’t have to do anything.
@@ -165,8 +164,6 @@ stabilize(Pred, Id, Successor, Nx) ->
         {Skey, _} ->
             % it is pointing to itself we should of course notify it about our existence
             Spid ! {notify, {Id, self()}}, 
-            % monitor the successor
-            monitor(Spid),
             {Successor, Nx};
         {Xkey, Xpid} ->
             case key:between(Xkey, Id, Skey) of
@@ -183,8 +180,6 @@ stabilize(Pred, Id, Successor, Nx) ->
                     % slide in between the two nodes
                     % inform our successor of our existence.
                     Spid ! {notify, {Id, self()}},
-                    % monitor the predecessor
-                    monitor(Xpid),
                     {Successor, Nx}
             end
     end.
@@ -201,7 +196,8 @@ notify({Nkey, Npid}, Id, Predecessor, Store) ->
     case Predecessor of
         nil ->
             Keep = handover(Id, Store, Nkey, Npid),
-            {{Nkey, Npid}, Keep};
+            Ref = monitor(Npid),
+            {{Nkey, Ref, Npid}, Keep};
         {Pkey, Pid} ->
             case key:between(Nkey, Pkey, Id) of
                 true -> 
@@ -209,8 +205,8 @@ notify({Nkey, Npid}, Id, Predecessor, Store) ->
                     % demonitor the previous predecessor
                     drop(Pid),
                     % monitor the new predecessor
-                    monitor(Npid),
-                    {{Nkey, Npid}, Keep};
+                    Ref = monitor(Npid),
+                    {{Nkey, Ref, Npid}, Keep};
                 false -> {Predecessor, Store}
             end
     end.
