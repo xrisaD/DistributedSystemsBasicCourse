@@ -3,7 +3,7 @@
 -export([start/1, start/2]).
 
 -define(timeout, 1000).
--define(arghh, 1000).
+-define(arghh, 100).
 
 % initialize the first process
 % Since it is the only node in the
@@ -19,7 +19,6 @@ start(Id, Grp) -> Self = self(), {ok, spawn_link(fun()-> init(Id, Grp, Self) end
 
 init(Id, Grp, Master) ->
     Self = self(),
-    io:format("Id: ~p~n",[Id]),
     % send message to a node in the group
     Grp ! {join, Master, Self},
     % wait for the invitation
@@ -112,10 +111,10 @@ election(Id, Master, N, Last, Slaves, [_|Group]) ->
             % in case the leader has crashed before the last message has been sent to all the nodes
             bcast(Id, Last, Rest),
             % broadcast the new view
-            bcast(Id, {view, N+1, Slaves, Group}, Rest),
+            bcast(Id, {view, N, Slaves, Group}, Rest),
             Master ! {view, Group},
             % start leader
-            leader(Id, Master, N, Rest, Group);
+            leader(Id, Master, N+1, Rest, Group);
         [Leader|Rest] ->
             % monitor the new leader
             erlang:monitor(process, Leader),
