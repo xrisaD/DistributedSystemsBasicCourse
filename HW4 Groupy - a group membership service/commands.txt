@@ -1,0 +1,4 @@
+% test add nodes
+X = worker:start(12, gms3, 10, 1000).
+Y = worker:start(13, gms3, 13, X, 1000). 
+

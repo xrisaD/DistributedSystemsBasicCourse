@@ -20,6 +20,7 @@ add(N, Module, Wrk, Sleep) ->
    worker:start(N, Module, random:uniform(256), Wrk, Sleep).
 
 %% To create a number of workers in one go, 
+% W1 = test:more(10, gms1, 1000).
 
 more(N, Module, Sleep) when N > 1 ->
     Wrk = first(1, Module, Sleep),
@@ -41,8 +42,8 @@ go(Wrk) ->
 sleep(Wrk, Sleep) ->
     Wrk ! {send, {sleep, Sleep}}.
 
-go(Wrk) ->
-    Wrk ! {send, stop}.
+% go(Wrk) ->
+%     Wrk ! {send, stop}.
 
 
 			  

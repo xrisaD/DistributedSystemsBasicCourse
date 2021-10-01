@@ -17,24 +17,29 @@ start(Id, Module, Rnd, Sleep) ->
 init(Id,  Module, Rnd, Sleep) ->
     {ok, Cast} = apply(Module, start, [Id]),
     Color = ?color,
+	io:format("INIT ~p~n", [Id]),
     init_cont(Id, Rnd, Cast, Color, Sleep).
 
 % Same as above, but now we join an existing worker
 %  Peer - the process id of a worker
 
 start(Id, Module, Rnd, Peer, Sleep) ->
+	io:format("here~n"),
     spawn(fun() -> init(Id, Module, Rnd, Peer, Sleep) end).
 
 init(Id, Module, Rnd, Peer, Sleep) ->
     {ok, Cast} = apply(Module, start, [Id, Peer]),
     {ok, Color} = join(Id, Cast),
+	io:format("INIT ~p~n", [Id]),
     init_cont(Id, Rnd, Cast, Color, Sleep).
 
 % Wait for the first view to be delivered
 
 join(Id, Cast) ->
+	io:format("join~n"),
     receive 
 	{view, _} ->
+		io:format("view~n"),
 	    Ref = make_ref(),
 	    Cast ! {mcast, {state_request, Ref}},
 	    state(Id, Ref);
@@ -59,6 +64,7 @@ state(Id, Ref) ->
 % know we know everything to continue. 
 		
 init_cont(Id, Rnd, Cast, Color, Sleep) ->
+	io:format("GUI starts: ~p~n",[Id]),
     random:seed(Rnd, Rnd, Rnd),
     Title = "Worker: " ++ integer_to_list(Id),
     Gui = gui:start(Title, self()),
