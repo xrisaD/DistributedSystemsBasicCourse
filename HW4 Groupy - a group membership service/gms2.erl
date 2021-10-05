@@ -3,7 +3,7 @@
 -export([start/1, start/2]).
 
 -define(timeout, 1000).
--define(arghh, 100).
+-define(arghh, 1000).
 
 % initialize the first process
 % Since it is the only node in the
