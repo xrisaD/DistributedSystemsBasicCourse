@@ -5,7 +5,7 @@
 -define(timeout, 1000).
 -define(timeout2, 10).
 -define(arghh, 1000).
--define(prob, 10).
+-define(prob, 100).
 -define(times, 4).
 
 % initialize the first process
@@ -168,7 +168,7 @@ send_or_not(Node, Msg, Qref) ->
             _ -> Node ! {Msg, Qref} % send
     end.
 
-% wait for acks from the receivers
+% wait for acks from the receivers (slaves)
 wait_for_acks(_, _, [], _) -> ok, io:format("ALL nodes received the message~n");
 wait_for_acks(_, _, _, 0) -> stop, io:format("TIMES=0~n");
 wait_for_acks(Id, Msg, Result, Times) -> 
@@ -183,12 +183,6 @@ wait_for_acks(Id, Msg, Result, Times) ->
                         wait_for_acks(Id, Msg, Result2, Times)
             end
     after ?timeout2 -> 
-        % % if we have received all acks we will stop
-        % Cond = length(Result) > 0,
-        % % bcast to the nodes that we haven't received a reply from
-        % if Cond -> bcast3(Id, Msg, Result, Times);
-        %    true -> stop
-        % end
         bcast3(Id, Msg, Result, Times)
     end.
 
