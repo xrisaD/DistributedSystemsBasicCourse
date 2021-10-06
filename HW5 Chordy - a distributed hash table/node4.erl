@@ -28,7 +28,7 @@ init(Id, Peer) ->
     % stabilize
     schedule_stabilize(),
     % start node
-    node(Id, Predecessor, Successor, storage:create(), Next).
+    node(Id, Predecessor, Successor, storage:create(), Next, storage:create()).
 
 % The first node will have itself as a predecessor
 connect(Id, nil) ->S =self(), {ok, {Id, nil, S}, {Id, S}};
@@ -49,62 +49,64 @@ connect(Id, Peer) ->
 % send stabilize message to yourself after some time
 schedule_stabilize() -> timer:send_interval(?Stabilize, self(), stabilize).
 
-node(Id, Predecessor, Successor, Store, Next) ->
+node(Id, Predecessor, Successor, Store, Next, Replicas) ->
     receive
         % a peer needs to know our key
         {key, Qref, Peer} ->
             % send the key to the Peer
             Peer ! {Qref, Id},
-            node(Id, Predecessor, Successor, Store, Next);
+            node(Id, Predecessor, Successor, Store, Next, Replicas);
         % a new node informs us of its existence
         {notify, New} ->
-            {Pred, UpdatedStore} = notify(New, Id, Predecessor, Store),
-            node(Id, Pred, Successor, UpdatedStore, Next);
+            {Pred, UpdatedStore, Replicas2} = notify(New, Id, Predecessor, Store, Replicas),
+            node(Id, Pred, Successor, UpdatedStore, Next, Replicas2);
         % the predecessor needs to know our predecessor and our successor
         {request, Peer} ->
             request(Peer, Predecessor, Successor),
-            node(Id, Predecessor, Successor, Store, Next);
+            node(Id, Predecessor, Successor, Store, Next, Replicas);
         % our successor informs us about its predecessor (and about its successor)
         {status, Pred, Nx} ->
             {Succ, Nxt} = stabilize(Pred, Id, Successor, Nx),
-            node(Id, Predecessor, Succ, Store, Nxt);
+            node(Id, Predecessor, Succ, Store, Nxt, Replicas);
         % will be send by schedule stabilize
         stabilize ->
             stabilize(Successor),
-            node(Id, Predecessor, Successor, Store, Next);
+            node(Id, Predecessor, Successor, Store, Next, Replicas);
         % added for debugging purposes
         info -> 
-            io:format("ID: ~p~nPredecessor: ~p~nSuccessor~p~nStore~p~nNext:~p~n", [Id, Predecessor, Successor, Store, Next]),
-             node(Id, Predecessor, Successor, Store, Next);
+            io:format("ID: ~p~nPredecessor: ~p~nSuccessor~p~nStore~p~nNext:~p~nReplica:~p~n", [Id, Predecessor, Successor, Store, Next, Replicas]),
+             node(Id, Predecessor, Successor, Store, Next, Replicas);
         % Probe messages
         probe ->
             create_probe(Id, Successor),
-            node(Id, Predecessor, Successor, Store, Next);
+            node(Id, Predecessor, Successor, Store, Next, Replicas);
         {probe, Id, Nodes, T} ->
             remove_probe(T, Nodes),
-            node(Id, Predecessor, Successor, Store, Next);
+            node(Id, Predecessor, Successor, Store, Next, Replicas);
         {probe, Ref, Nodes, T} ->
             forward_probe(Ref, T, Nodes, Id, Successor),
-            node(Id, Predecessor, Successor, Store, Next);
+            node(Id, Predecessor, Successor, Store, Next, Replicas);
         % add
         {add, Key, Value, Qref, Client} ->
             Added = add(Key, Value, Qref, Client, Id, Predecessor, Successor, Store),
-            node(Id, Predecessor, Successor, Added, Next);
+            node(Id, Predecessor, Successor, Added, Next, Replicas);
         % lookup
         {lookup, Key, Qref, Client} ->
             lookup(Key, Qref, Client, Id, Predecessor, Successor, Store),
-            node(Id, Predecessor, Successor, Store, Next);
+            node(Id, Predecessor, Successor, Store, Next, Replicas);
         % delegate responsibility.
         {handover, Elements} ->
             Merged = storage:merge(Store, Elements),
-            node(Id, Predecessor, Successor, Merged, Next);
-        % monitor both predecessor and successor
-        {'DOWN', Ref, process, _, _} ->
-            {Pred, Succ, Nxt} = down(Ref, Predecessor, Successor, Next),
-            node(Id, Pred, Succ, Store, Nxt);
+            node(Id, Predecessor, Successor, Merged, Next, Replicas);
         % our predecessor added an element to the store
         % I have to save the replica because I am its successor
-        {replicate, Key, Value} -> 0;
+        {replicate, Key, Value} -> 
+            % save the replica
+            node(Id, Predecessor, Successor, Store, Next, storage:add(Key, Value, Replicas));
+        % monitor both predecessor and successor
+        {'DOWN', Ref, process, _, _} ->
+            {Pred, Succ, Nxt, Store2, Replicas2} = down(Ref, Predecessor, Successor, Next, Store,Replicas),
+            node(Id, Pred, Succ, Store2, Nxt, Replicas2);
         stop -> stop
     end.
 
@@ -112,23 +114,31 @@ node(Id, Predecessor, Successor, Store, Next) ->
 % demonitor:
 
 % if our predecessor crashed
-down(Ref, {_, Ref, _}, Successor, Next) -> 
+down(Ref, {_, Ref, _}, Successor, Next, Store, Replicas) ->
+    Store2 = storage:merge(Replicas, Store),
+    {_, _, Sid} = Successor,
+    lists:foreach(fun({K, V})-> Sid ! {replicate, K, V} end, Replicas),
+    Replica2 = storage:create(),
+    % our successor have to replicate
     drop(Ref), 
-    {nil, Successor, Next};
+    {nil, Successor, Next, Store2, Replica2};
 
 % if our successor crashed
-down(Ref, Predecessor, {_, Ref, _}, {Nkey, Npid}) ->
+down(Ref, Predecessor, {_, Ref, _}, {Nkey, Npid}, Store, Replicas) ->
     drop(Ref),
     Nref = monitor(Npid),
     % inform our new successor of our existance
     Npid ! {notify, {Nkey, Npid}}, 
-    {Predecessor, {Nkey, Nref, Npid}, nil}.
+    {Predecessor, {Nkey, Nref, Npid}, nil, Store, Replicas}.
 
 % storage functions
 add(Key, Value, Qref, Client, Id, {Pkey, _, _}, {_, _,Spid}, Store) ->
     case key:between(Key, Pkey, Id) of
         true ->
             Client ! {Qref, ok},
+            % forward the key-value pair to our successor 
+            % to save the replica
+            Spid ! {replicate, Key, Value},
             % return the updated store
             storage:add(Key, Value, Store);
         false ->
@@ -151,7 +161,7 @@ lookup(Key, Qref, Client, Id, {Pkey, _}, Successor, Store) ->
     end.
 
 % send a request message to its successor.
-stabilize({Skey, _, Spid}) -> Spid ! {request, self()}.
+stabilize({_, _, Spid}) -> Spid ! {request, self()}.
 
 % Pred: our successor's current predecessor 
 stabilize(Pred, Id, Successor, Nx) ->
@@ -191,7 +201,7 @@ stabilize(Pred, Id, Successor, Nx) ->
     end.
 
 request(Peer, Predecessor, Successor) ->
-    {Skey, Sref, Spid} = Successor,
+    {Skey, _, Spid} = Successor,
     case Predecessor of
         nil -> Peer ! {status, nil, {Skey, Spid}};
         {Pkey, Pref, Ppid} -> Peer ! {status, {Pkey, Pref, Ppid}, {Skey, Spid}}
@@ -199,32 +209,36 @@ request(Peer, Predecessor, Successor) ->
 
 
 % return our predecessor and the updated store
-notify({Nkey, Npid}, Id, Predecessor, Store) ->
+notify({Nkey, Npid}, Id, Predecessor, Store, Replicas) ->
     case Predecessor of
         % in case we didn't have a predecessor this is our new predecessor
         nil ->
-            Keep = handover(Id, Store, Nkey, Npid),
+            {Keep, _} = handover(Id, Store, Nkey, Npid, nil, Replicas),
             Ref = monitor(Npid),
-            {{Nkey, Ref, Npid}, Keep};
+            {{Nkey, Ref, Npid}, Keep, Replicas};
         {Pkey, Pref, _} ->
             case key:between(Nkey, Pkey, Id) of
                 true -> 
-                    Keep = handover(Id, Store, Nkey, Npid),
+                    {Keep, Replicas2} = handover(Id, Store, Nkey, Npid, Pkey, Replicas),
                     % demonitor the previous predecessor
                     drop(Pref),
                     % monitor the new predecessor
                     Ref = monitor(Npid),
-                    {{Nkey, Ref, Npid}, Keep};
-                false -> {Predecessor, Store}
+                    {{Nkey, Ref, Npid}, Keep, Replicas2};
+                false -> {Predecessor, Store, Replicas}
             end
     end.
 
-handover(Id, Store, Nkey, Npid) ->
+handover(Id, Store, Nkey, Npid, nil, Replicas) ->
     % we keep the entries betweeen (Pkey, Id], where Pkey is the predecessor's id
     {Keep, Rest} = storage:split(Nkey, Id, Store),
     % we handover the rest of the entries which aren't ours to our successor
     Npid ! {handover, Rest},
-    Keep.
+    {Keep, Replicas};
+
+handover(Id, Store, Nkey, Npid, Pkey, _) ->
+    {Keep, _} = storage:split(Pkey, Nkey, Store),
+    handover(Id, Store, Nkey, Npid, nil, Keep).
 
 % Probe functions: for testing purposes
 create_probe(Id, Successor) -> 

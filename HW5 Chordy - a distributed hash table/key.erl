@@ -10,4 +10,3 @@ between(Key, From, To) ->
        To > From -> (Key>From) and (Key=<To);
        true -> true
     end.
-    %(From < Key) and ((Key =< To) or (To < From)).
