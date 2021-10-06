@@ -61,9 +61,9 @@ node(Id, Predecessor, Successor, Store, Next) ->
         {notify, New} ->
             {Pred, UpdatedStore} = notify(New, Id, Predecessor, Store),
             node(Id, Pred, Successor, UpdatedStore, Next);
-        % the predecessor needs to know our predecessor
+        % the predecessor needs to know our predecessor and our successor
         {request, Peer} ->
-            request(Peer, Predecessor, Next),
+            request(Peer, Predecessor, Successor),
             node(Id, Predecessor, Successor, Store, Next);
         % our successor informs us about its predecessor (and about its successor)
         {status, Pred, Nx} ->
@@ -158,9 +158,7 @@ stabilize(Pred, Id, Successor, Nx) ->
         nil -> 
             % notify the successor about our existence
             Spid ! {notify, {Id, self()}},
-            if Nx == nil -> io:format("NIL: ~p ~p~n",[Successor, Id]),{Successor, {Skey, Spid}}; 
-               Nx /= nill -> {Successor, Nx}
-            end;
+            {Successor, Nx};
         {Id, _, _} ->
             % it is pointing back to us we don’t have to do anything.
             {Successor, Nx};
@@ -197,6 +195,7 @@ request(Peer, Predecessor, Next) ->
 % return our predecessor and the updated store
 notify({Nkey, Npid}, Id, Predecessor, Store) ->
     case Predecessor of
+        % in case we didn't have a predecessor this is our new predecessor
         nil ->
             Keep = handover(Id, Store, Nkey, Npid),
             Ref = monitor(Npid),
