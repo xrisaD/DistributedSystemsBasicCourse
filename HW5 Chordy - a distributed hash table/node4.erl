@@ -1,4 +1,4 @@
--module(node3).
+-module(node4).
 -export([start/1, start/2]).
 
 -define(Timeout, 1000).
@@ -102,6 +102,9 @@ node(Id, Predecessor, Successor, Store, Next) ->
         {'DOWN', Ref, process, _, _} ->
             {Pred, Succ, Nxt} = down(Ref, Predecessor, Successor, Next),
             node(Id, Pred, Succ, Store, Nxt);
+        % our predecessor added an element to the store
+        % I have to save the replica because I am its successor
+        {replicate, Key, Value} -> 0;
         stop -> stop
     end.
 
